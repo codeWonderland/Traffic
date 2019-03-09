@@ -30,6 +30,12 @@ class TrafficLights:
         self.ns_waiting = 0
         self.ew_waiting = 0
 
+        # setup country code
+        self.us = True
+
+        # set current auth status
+        self.auth = False
+
         # Setup pins for output
         GPIO.setup(TrafficLights.ns_red, GPIO.OUT)
         GPIO.setup(TrafficLights.ns_yellow, GPIO.OUT)
@@ -53,8 +59,17 @@ class TrafficLights:
             time.sleep(1)
             GPIO.output(TrafficLights.ns_yellow, False)
             GPIO.output(TrafficLights.ns_red, True)
-            GPIO.output(TrafficLights.ew_red, False)
-            GPIO.output(TrafficLights.ew_green, True)
+
+            if self.us:
+                GPIO.output(TrafficLights.ew_red, False)
+                GPIO.output(TrafficLights.ew_green, True)
+
+            else:
+                GPIO.output(TrafficLights.ew_red, False)
+                GPIO.output(TrafficLights.ew_yellow, True)
+                time.sleep(0)
+                GPIO.output(TrafficLights.ew_yellow, False)
+                GPIO.output(TrafficLights.ew_green, True)
 
     def swap_w2n(self):
         if not self.ns:
@@ -63,27 +78,52 @@ class TrafficLights:
             time.sleep(1)
             GPIO.output(TrafficLights.ew_yellow, False)
             GPIO.output(TrafficLights.ew_red, True)
-            GPIO.output(TrafficLights.ns_red, False)
-            GPIO.output(TrafficLights.ns_green, True)
+
+            if self.us:
+                GPIO.output(TrafficLights.ns_red, False)
+                GPIO.output(TrafficLights.ns_green, True)
+
+            else:
+                GPIO.output(TrafficLights.ns_red, False)
+                GPIO.output(TrafficLights.ns_yellow, True)
+                time.sleep(1)
+                GPIO.output(TrafficLights.ns_yellow, False)
+                GPIO.output(TrafficLights.ns_green, True)
 
     def on_message(self, client, userdata, message):
         data = str(message.payload.decode("utf-8")).upper()
 
-        if data in ['N', 'S']:
-            self.ns_waiting += 1
+        if self.auth:
+            if data in ['N', 'S']:
+                self.ns_waiting += 1
 
-        elif data in ['E', 'W']:
-            self.ew_waiting += 1
+                self.timer_one = True
 
-        elif data == 'L':
-            dir = 'N'
+            elif data in ['E', 'W']:
+                self.ew_waiting += 1
 
-            if not self.ns:
-                dir = 'W'
+                self.timer_one = True
 
-            self.client.publish("traffic/pub", dir)
+            elif data == 'L':
+                lights_dir = 'N'
 
-        self.timer_one = True
+                if not self.ns:
+                    lights_dir = 'W'
+
+                self.client.publish("traffic/pub", lights_dir)
+
+            elif data == 'US':
+                self.us = True
+
+            elif data == 'UK':
+                self.us = False
+
+        if data == 'PASSWORD':
+            # send secret topic for convo
+            self.client.publish("traffic/pub", "traffic/lights")
+
+            # set auth status
+            self.auth = True
 
     def run(self):
         # Create client
@@ -97,8 +137,10 @@ class TrafficLights:
 
         # Connect to broker
         self.client.connect("localhost")
+        self.client.subscribe("traffic/auth")
         self.client.subscribe("traffic/lights")
 
+        # start listening
         self.client.loop_start()
 
         while True:
