@@ -4,7 +4,7 @@ import paho.mqtt.client as mqtt
 
 waiting = False
 auth_status = False
-lights_topic = "traffic/auth"
+lights_topic = "traffic/lights"
 
 
 def on_message(client, userdata, message):
@@ -24,9 +24,7 @@ def on_message(client, userdata, message):
 
         waiting = False
 
-    elif data.__contains__('/') and auth_status is False:
-        lights_topic = data.lower()
-
+    elif data == "AUTHENTICATED" and auth_status is False:
         auth_status = True
 
     else:

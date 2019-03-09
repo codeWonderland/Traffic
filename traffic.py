@@ -119,11 +119,11 @@ class TrafficLights:
                 self.us = False
 
         if data == 'PASSWORD':
-            # send secret topic for convo
-            self.client.publish("traffic/pub", "traffic/lights")
-
             # set auth status
             self.auth = True
+
+            # inform the user
+            self.client.publish("traffic/pub", "AUTHENTICATED")
 
     def run(self):
         # Create client
@@ -137,7 +137,6 @@ class TrafficLights:
 
         # Connect to broker
         self.client.connect("localhost")
-        self.client.subscribe("traffic/auth")
         self.client.subscribe("traffic/lights")
 
         # start listening
